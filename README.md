@@ -1,2 +1,2 @@
-# OpenGL_C-
+# OpenGL_Game
 Game creation using OpenGL
