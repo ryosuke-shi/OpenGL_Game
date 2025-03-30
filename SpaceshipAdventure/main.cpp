@@ -5,6 +5,9 @@
 #include <vector>
 #include <iostream>
 #include <ctime>
+#include <GL/glut.h>
+#include <string>
+using namespace std;
 
 // ウィンドウサイズ
 const int SCREEN_WIDTH = 800;
@@ -23,7 +26,12 @@ int playerSize = 50;
 
 // 隕石の生成に関する変数
 float lastMeteorTime = 0.0f;   // 最後に隕石を生成した時間
-float spawnInterval = 1.0f;    // 隕石生成の間隔（秒）
+float spawnInterval = 1.0f;    // 隕石生成の間隔
+float spawnSpeedUpInterval = 5.0f;     // 次に生成速度がアップする間隔
+float nextSpawnSpeedUpTime = spawnSpeedUpInterval; // 次に生成速度がアップする時間
+float speedUpInterval = 10.0f; // 隕石のスピードアップの間隔
+float nextSpeedUpTime = speedUpInterval; // 次に隕石がスピードアップする時間
+int meteorSpeed = 200; // 隕石のスピード
 
 // ゲームの状態
 float survivalTime = 0.0f;     // 生存時間
@@ -44,13 +52,34 @@ void spawnMeteor() {
     meteors.push_back({ glm::vec2(x, SCREEN_HEIGHT), glm::vec2(50, 50) });
 }
 
+void renderText(float x, float y, const std::string& text) {
+    glRasterPos2f(x, y);
+    for (char c : text) {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, c);
+    }
+}
+
 // ゲームの状態更新（毎フレーム）
 void update(float deltaTime) {
     if (gameOver) return;  // ゲームオーバー時は処理をスキップ
 
     survivalTime += deltaTime;  // 生存時間を加算
 
-    // 一定時間ごとに隕石を生成
+    // 一定間隔で隕石のスピードアップ
+    if (survivalTime > nextSpeedUpTime) {
+        meteorSpeed += 50;
+        nextSpeedUpTime += speedUpInterval;
+        std::cout << "meteorSpeed: " + to_string(meteorSpeed) << endl;
+    }
+
+    // 一定間隔で隕石の生成間隔アップ
+    if (survivalTime > nextSpawnSpeedUpTime) {
+        spawnInterval *= 0.85f;
+        nextSpawnSpeedUpTime += spawnSpeedUpInterval;
+        std::cout << "spawnInterval: " + to_string(spawnInterval) << endl;
+    }
+
+    // 一定時間で隕石を生成
     if (glfwGetTime() - lastMeteorTime > spawnInterval) {
         spawnMeteor();
         lastMeteorTime = glfwGetTime();
@@ -58,7 +87,7 @@ void update(float deltaTime) {
 
     // 隕石を下方向に移動させる
     for (auto& m : meteors) {
-        m.position.y -= 200 * deltaTime;
+        m.position.y -= meteorSpeed * deltaTime;
     }
 
     // プレイヤと各隕石との衝突をチェック
@@ -115,11 +144,17 @@ void render() {
         glVertex2f(m.position.x, m.position.y + m.size.y);
     }
 
-    glEnd();  // 描画終了
+    glEnd();  // キャラ描画終了
+
+    // スコア表示
+    glColor3f(1.0f, 1.0f, 1.0f);  // 白色
+    std::string timeText = "Time: " + std::to_string((int)survivalTime) + "s";
+    renderText(10.0f, SCREEN_HEIGHT - 30.0f, timeText);  // 左上に表示
 }
 
-int main() {
+int main(int argc, char** argv) {
     srand(static_cast<unsigned int>(time(0)));  // 乱数初期化
+    glutInit(&argc, argv); // GLUT初期化
     glfwInit();  // GLFW初期化
 
     // ウィンドウの作成
